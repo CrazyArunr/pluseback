@@ -11,8 +11,8 @@ from pydantic import BaseModel
 import json
 import os
 from datetime import datetime, timezone
-from ..config import settings
-from ..utils.helpers import (
+from pulse_qa_api.config import settings
+from pulse_qa_api.utils.helpers import (
     get_custom_client,
     get_langchain_custom_llm,
     get_embeddings,
