@@ -2,13 +2,14 @@
 Utility functions for the Pulse QA API
 """
 
+import os
 import json
 from typing import Dict, List, Optional
 from fastapi import HTTPException
 from openai import OpenAI
 from langchain_openai import ChatOpenAI
 from langchain.embeddings import HuggingFaceEmbeddings
-from ..config import settings
+from pulse_qa_api.config import settings
 
 def get_custom_client() -> OpenAI:
     """Get OpenAI client with custom configuration"""
