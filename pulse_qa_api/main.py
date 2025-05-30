@@ -15,9 +15,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import using relative imports
-from .api.mongo_api import router as mongo_router
-from .api.pos_api import router as pos_router
-from .config import settings
+# Import directly from the api directory
+from pulse_qa_api.api.mongo_api import router as mongo_router
+from pulse_qa_api.api.pos_api import router as pos_router
+from pulse_qa_api.config import settings
 
 # Create the main FastAPI app
 app = FastAPI(
