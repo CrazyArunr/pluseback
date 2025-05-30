@@ -20,7 +20,7 @@ import time
 from io import BytesIO
 import zipfile
 
-from ..config.settings import (
+from pulse_qa_api.config.settings import (
     GEMINI_API_KEY,
     MONGO_URI,
     DB_NAME,
