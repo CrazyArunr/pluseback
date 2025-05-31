@@ -2,17 +2,24 @@
 POS API for test scenario generation and analysis
 """
 
-import re  # Add missing import
+import os
+import sys
+import re
 import google.generativeai as genai
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import JSONResponse
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 import json
-import os
 from datetime import datetime, timezone
-from ..config import settings
-from ..utils.helpers import (
+
+# Add the project root directory to Python path
+current_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
+from pulse_qa_api.config import settings
+from pulse_qa_api.utils.helpers import (
     get_custom_client,
     get_langchain_custom_llm,
     get_embeddings,
