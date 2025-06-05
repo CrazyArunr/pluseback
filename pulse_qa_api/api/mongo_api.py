@@ -2,13 +2,12 @@
 MongoDB API for test analysis and reporting
 """
 
-import os
-import sys
 import google.generativeai as genai
 import json
 from pymongo import MongoClient
 from bson import ObjectId, json_util
 from datetime import datetime, timedelta, timezone
+import os
 from dotenv import load_dotenv
 from pymongo.errors import ConnectionFailure, PyMongoError
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File
@@ -21,19 +20,15 @@ import time
 from io import BytesIO
 import zipfile
 
-# Add the project root directory to Python path
-current_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if current_dir not in sys.path:
-    sys.path.insert(0, current_dir)
+from pulse_qa_api.config.settings import settings
 
-from pulse_qa_api.config.settings import (
-    GEMINI_API_KEY,
-    MONGO_URI,
-    DB_NAME,
-    COLLECTION_NAME,
-    CONNECT_TIMEOUT_MS,
-    SOCKET_TIMEOUT_MS
-)
+GEMINI_API_KEY = settings.GEMINI_API_KEY
+MONGO_URI = settings.MONGO_URI
+DB_NAME = settings.DB_NAME
+COLLECTION_NAME = settings.COLLECTION_NAME
+CONNECT_TIMEOUT_MS = settings.CONNECT_TIMEOUT_MS
+SOCKET_TIMEOUT_MS = settings.SOCKET_TIMEOUT_MS
+
 
 # Create router
 router = APIRouter(
