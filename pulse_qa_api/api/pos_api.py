@@ -2,36 +2,39 @@
 POS API for test scenario generation and analysis
 """
 
-import os
-import sys
-import re
+import re  # Add missing import
 import google.generativeai as genai
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import JSONResponse
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 import json
+import os
 from datetime import datetime, timezone
-
-# Add the project root directory to Python path
-current_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if current_dir not in sys.path:
-    sys.path.insert(0, current_dir)
-
-from pulse_qa_api.config import settings
+from pulse_qa_api.config.settings import settings  # Import from settings.py instead of __init__.py
 from pulse_qa_api.utils.helpers import (
     get_custom_client,
     get_langchain_custom_llm,
     get_embeddings,
     process_uploaded_file,
-    extract_features_from_scenario
+    extract_features_from_scenario,
+    set_settings
 )
+from openai import OpenAI
+from langchain.chat_models import ChatOpenAI
+
+# Assign settings to variables immediately
+CUSTOM_API_KEY = settings.CUSTOM_API_KEY
+CUSTOM_API_BASE = settings.CUSTOM_API_BASE
+CUSTOM_MODEL = settings.CUSTOM_MODEL
+CUSTOM_HEADERS = settings.CUSTOM_HEADERS
+GEMINI_API_KEY = settings.GEMINI_API_KEY
+
+# Initialize settings in helpers.py
+set_settings(settings)
 
 # Create router
 router = APIRouter()
-
-# Define CUSTOM_MODEL
-CUSTOM_MODEL = "llama3_1"
 
 # Define model
 model = genai.GenerativeModel(
@@ -265,31 +268,61 @@ def get_response(query: str, test_data: Optional[Dict] = None, element_data: Opt
         
         if files_uploaded:
             try:
-                # Add default elements if not present
-                default_elements = [
-                    {"name": "loginButton", "type": "XPATH", "value": "//button[@type=\"submit\"]"},
-                    {"name": "dashboardElement", "type": "XPATH", "value": "//div[@id=\"dashboard\"]"},
-                    {"name": "titleElement", "type": "XPATH", "value": "//h1"},
-                    {"name": "emailInput", "type": "XPATH", "value": "//input[@id=\"email\"]"},
-                    {"name": "resetButton", "type": "XPATH", "value": "//button[@type=\"submit\"]"},
-                    {"name": "successMessage", "type": "XPATH", "value": "//div[@class=\"success-message\"]"},
-                    {"name": "errorMessage", "type": "XPATH", "value": "//div[@class=\"error-message\"]"},
-                    {"name": "newPasswordInput", "type": "XPATH", "value": "//input[@id=\"new-password\"]"},
-                    {"name": "confirmPasswordInput", "type": "XPATH", "value": "//input[@id=\"confirm-password\"]"},
-                    {"name": "submitButton", "type": "XPATH", "value": "//button[@type=\"submit\"]"}
-                ]
+                # Default element locators
+                default_elements = {
+                    "usernameInput": "//input[@id='username']",
+                    "passwordInput": "//input[@id='password']",
+                    "loginButton": "//button[@type='submit']",
+                    "submitButton": "//button[@type='submit']",
+                    "successMessage": "//div[@class='success-message']",
+                    "dashboardElement": "//div[@id='dashboard']",
+                    "emailInput": "//input[@id='email']",
+                    "resetButton": "//button[@type='submit']",
+                    "newPasswordInput": "//input[@id='new-password']",
+                    "confirmPasswordInput": "//input[@id='confirm-password']",
+                    "profileElement": "//div[@id='profile']",
+                    "phoneInput": "//input[@id='phone']"
+                }
                 
-                # Merge default elements with provided elements
-                existing_names = {e["name"] for e in element_data["elements"]}
-                for element in default_elements:
-                    if element["name"] not in existing_names:
-                        element_data["elements"].append(element)
+                # Create a mapping of element names to their locators
+                element_mapping = default_elements.copy()  # Start with default elements
+                
+                # Update with provided elements
+                for element in element_data["elements"]:
+                    element_name = element["name"].lower()
+                    # Map to standard element names used in scenario generators
+                    if "username" in element_name or "email" in element_name:
+                        element_mapping["usernameInput"] = element["value"]
+                    elif "password" in element_name:
+                        element_mapping["passwordInput"] = element["value"]
+                    elif "login" in element_name or "submit" in element_name:
+                        element_mapping["loginButton"] = element["value"]
+                        element_mapping["submitButton"] = element["value"]  # Map to both
+                    elif "success" in element_name or "message" in element_name:
+                        element_mapping["successMessage"] = element["value"]
+                    elif "dashboard" in element_name or "home" in element_name:
+                        element_mapping["dashboardElement"] = element["value"]
+                    elif "email" in element_name:
+                        element_mapping["emailInput"] = element["value"]
+                    elif "reset" in element_name:
+                        element_mapping["resetButton"] = element["value"]
+                    elif "new-password" in element_name:
+                        element_mapping["newPasswordInput"] = element["value"]
+                    elif "confirm-password" in element_name:
+                        element_mapping["confirmPasswordInput"] = element["value"]
+                    elif "profile" in element_name:
+                        element_mapping["profileElement"] = element["value"]
+                    elif "phone" in element_name:
+                        element_mapping["phoneInput"] = element["value"]
+                    else:
+                        # For any other elements, keep their original name
+                        element_mapping[element["name"]] = element["value"]
                 
                 # Extract configuration
                 config = {
                     "browser": app_data["application_config"].get("browserType", "chrome"),
                     "base_url": app_data["application_config"].get("url", "https://example.com"),
-                    "elements": {e["name"]: e["name"] for e in element_data["elements"]}
+                    "elements": element_mapping  # Use the mapped elements with defaults
                 }
                 
                 # Extract test values with defaults
@@ -721,7 +754,7 @@ async def generate_scenario_endpoint(request: SimpleChatRequest):
         # Handle general queries using Gemini
         try:
             # Configure Gemini for general queries
-            genai.configure(api_key=settings.GEMINI_API_KEY)
+            genai.configure(api_key=GEMINI_API_KEY)
             model = genai.GenerativeModel(
                 model_name="gemini-2.0-flash",
                 generation_config={
@@ -960,7 +993,7 @@ async def enhance_feature_file(request: FeatureFileRequest):
     """
     try:
         # Configure Gemini
-        genai.configure(api_key=settings.GEMINI_API_KEY)
+        genai.configure(api_key=GEMINI_API_KEY)
         
         # Load Gemini model
         model = genai.GenerativeModel(
